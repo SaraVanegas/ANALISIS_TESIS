@@ -7,14 +7,12 @@ Original file is located at
     https://colab.research.google.com/drive/1IVq9h_wY2reEiwCRvtqUU179zWPdGfp7
 """
 
-import pandas as pd 
-import numpy as np
-import calendar
-from datetime import datetime, timedelta
-import statistics as stat
-import matplotlib.pyplot as plt
+import pandas as pd #manejo y analisis de estructuras de datos
+import numpy as np #cclculo numerico y analisis de datos
+from datetime import datetime, timedelta #manejo de fechas
+import missingno as msno #manejo de valores faltantes
 
-data = pd.read_excel('/content/VENTAS.xlsx')
+data = pd.read_excel('/content/VENTAS.xlsx') #se asigna la BD a una variable
 
 """# ***ANALISIS DE LOS DATOS***
 
@@ -22,35 +20,49 @@ data = pd.read_excel('/content/VENTAS.xlsx')
 
 """
 
-data.head()
+data.head() #Visualizar los primeros registros de la BD
 
-data.head()
+print(data.shape) #Conocer las dimensiones de la BD
+print(data.dtypes) #Conocer los tipos de datos que tienen las columnas
 
-print(data.shape)
-print(data.dtypes)
+msno.matrix(data) #Grafico de nulos por columna
 
-data.isnull().sum()
+data.isnull().sum() #Sumar los nulos por columna que hay en los registros
+
+data.describe(include='O') #Da una descripcion general de los registros
+
+data['PRODUCTO'].unique() #Para mirar los valores que hay en una columna
+
+data['ESTADO'].unique()
 
 """# **LIMPIEZA DE DATOS**
 
 """
 
-data= data.drop(['PRODUCTO2', 'PRODUCTO3', 'PRODUCTO4', 'PRODUCTO5', 'PRODUCTO6', 'PRODUCTO7', 'Columna18'], axis=1)
+data['PRODUCTO']=data['PRODUCTO'].str.lower() #Se convierten todos los registros a minuscula
+data['NOMBRE']=data['NOMBRE'].str.lower()
 
+data= data.drop(['Columna18'], axis=1) #Se borran columnas que no dan información util
+
+#Se hace un reemplazo de ciertas caracteristicas para poder manipular los datos más adelante
 data['COSTOTOTAL'] = data['COSTOTOTAL'].str.replace('.00', '0')
 data['COSTOTOTAL'] = data['COSTOTOTAL'].str.replace(',', '')
 
-data.COSTOTOTAL = data.COSTOTOTAL.astype(float)
+data.COSTOTOTAL = data.COSTOTOTAL.astype(float) #Se cambia el tipo de dato
 
-def depurar(datos):
-  for i in range(0,len(datos.columns)):
-    atributo = datos.columns[i]
-    if (datos.isnull()[atributo].sum() != 0): #si hay valores nulos en la columna
-      datos[atributo].fillna(0,inplace=True) #llena con nas
-depurar(data)
+mean_c=data['COSTOTOTAL'].mean() #Para sacar en una variable a aparte la media de costototal
+print(mean_c)
+
+"""PARA RELLENAR NULOS Y OTROS
+
+"""
 
 for i in range(0, len(data)):
-  if pd.isnull(data['ESTADO'][i]):
+  if ((data['ESTADO'][i] == 'Enviado') & (data['COSTOTOTAL'][i] == 0)):
+    data['COSTOTOTAL'][i]= mean_c
+
+for i in range(0, len(data)):
+  if ((data['ESTADO'][i]) == 'Leída')  | pd.isnull(data['ESTADO'][i]):
     data['ESTADO'][i] = 'Leído'
 
 for i in range(0, len(data)):
@@ -61,12 +73,25 @@ for i in range(0, len(data)):
   if pd.isnull(data['TELEFONO'][i]):
     data['TELEFONO'][i] = 'Sin Especificar'
 
+for i in range(0, len(data)):
+  if pd.isnull(data['PRODUCTO'][i]):
+    data['PRODUCTO'][i] = 'Sin Especificar'
+
+def depurar(datos):
+  for i in range(0,len(datos.columns)):
+    atributo = datos.columns[i]
+    if (datos.isnull()[atributo].sum() != 0): #Si hay valores nulos en la columna
+      datos[atributo].fillna(0,inplace=True) #Llena con 0
+depurar(data)
+
 """# **ANALISIS ESTADISTICO**"""
 
+#Funciones para sacar la fecha max y min
 min_date = data.FECHA.min()
 max_date = data.FECHA.max()
 print(min_date, max_date)
 
+#Se guardan las fechas en una variable y se convierte en datetime para guardarlas en un array
 date_start="%s-0%s" % (min_date.year, min_date.month)
 date_end="%s-0%s" % (max_date.year, max_date.month)
 date_start=np.datetime64(date_start)
@@ -85,4 +110,3 @@ for i in range(numero_clientes):
   name=data['NOMBRE'][data['CEDULA']==ceds[i]]
   avg_cost=np.mean([int(x) for x in data.COSTOTOTAL.loc[data['CEDULA']==ceds[i]]])
   print(name.values[0], 'promedio de compra: ', int(avg_cost))
-
